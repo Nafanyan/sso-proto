@@ -15,6 +15,9 @@ Protocol Buffers определения для SSO (Single Sign-On) сервис
 - **Register** — регистрация нового пользователя
 - **Login** — вход пользователя и получение токена доступа
 - **Validate** — проверка валидности токена и доступа к конкретному приложению (возвращает email пользователя, если токен валиден; иначе возвращает gRPC ошибку)
+- **AllowAccess** — разрешение доступа пользователя к конкретному приложению
+- **RevokeAccess** — отзыв доступа пользователя к конкретному приложению
+- **GrantAccess** — *deprecated*: используйте `AllowAccess` вместо этого метода
 
 ## Структура проекта
 
@@ -111,6 +114,36 @@ if err != nil {
 // resp.Email — email пользователя (возвращается только если токен валиден)
 ```
 
+### Пример разрешения доступа
+
+```go
+req := &ssov1.AllowAccessRequest{
+    Email:   "user@example.com",
+    AppCode: "my-app",
+}
+
+resp, err := authClient.AllowAccess(ctx, req)
+if err != nil {
+    log.Fatal(err)
+}
+// resp.AppCode — код приложения, к которому был предоставлен доступ
+```
+
+### Пример отзыва доступа
+
+```go
+req := &ssov1.RevokeAccessRequest{
+    Email:   "user@example.com",
+    AppCode: "my-app",
+}
+
+resp, err := authClient.RevokeAccess(ctx, req)
+if err != nil {
+    log.Fatal(err)
+}
+// resp.AppCode — код приложения, доступ к которому был отозван
+```
+
 ## Миграция с app_id на app_code
 
 Поле `app_id` (int32) помечено как `deprecated`. Используйте `app_code` (string) для новых реализаций.
@@ -130,6 +163,32 @@ req := &ssov1.LoginRequest{
 ```
 
 Старый код продолжит работать, но рекомендуется обновить на использование `app_code`.
+
+## Миграция с GrantAccess на AllowAccess
+
+Метод `GrantAccess` помечен как `deprecated`. Используйте `AllowAccess` для новых реализаций.
+
+**Старый подход (deprecated):**
+```go
+req := &ssov1.GrantAccessRequest{
+    Email:   "user@example.com",
+    AppCode: "my-app",
+}
+
+resp, err := authClient.GrantAccess(ctx, req) // deprecated
+```
+
+**Новый подход:**
+```go
+req := &ssov1.AllowAccessRequest{
+    Email:   "user@example.com",
+    AppCode: "my-app",
+}
+
+resp, err := authClient.AllowAccess(ctx, req) // рекомендуется
+```
+
+Старый код продолжит работать, но рекомендуется обновить на использование `AllowAccess`.
 
 ## Версионирование
 

@@ -13,7 +13,14 @@ service Auth {
   // Validate checks the user's accessibility to a specific app
   rpc Validate(ValidateTokenRequest) returns (ValidateTokenResponse);
   // GrantAccess grants access to a specific app for a user.
-  rpc GrantAccess (GrantAccessRequest) returns (GrantAccessResponse);
+  // Deprecated: use AllowAccess instead.
+  rpc GrantAccess (GrantAccessRequest) returns (GrantAccessResponse) {
+    option deprecated = true;
+  }
+  // AllowAccess allows access to a specific app for a user.
+  rpc AllowAccess (AllowAccessRequest) returns (AllowAccessResponse);
+  // RevokeAccess revokes access to a specific app for a user.
+  rpc RevokeAccess (RevokeAccessRequest) returns (RevokeAccessResponse);
 }
 
 message RegisterRequest {
@@ -45,11 +52,33 @@ message ValidateTokenResponse {
   string email = 1; // Email of the user (only if valid).
 }
 
+// Deprecated: use AllowAccessRequest instead.
 message GrantAccessRequest {
+  option deprecated = true;
   string email = 1; // Email of the user to grant access to.
   string app_code = 2; // Code of the app to grant access to.
 }
 
+// Deprecated: use AllowAccessResponse instead.
 message GrantAccessResponse {
-    string app_code = 1; // Code of the app to grant access to.
+  option deprecated = true;
+  string app_code = 1; // Code of the app to grant access to.
+}
+
+message AllowAccessRequest {
+  string email = 1; // Email of the user to allow access to.
+  string app_code = 2; // Code of the app to allow access to.
+}
+
+message AllowAccessResponse {
+  string app_code = 1; // Code of the app access was allowed to.
+}
+
+message RevokeAccessRequest {
+  string email = 1; // Email of the user to revoke access from.
+  string app_code = 2; // Code of the app to revoke access to.
+}
+
+message RevokeAccessResponse {
+  string app_code = 1; // Code of the app access was revoked from.
 }
