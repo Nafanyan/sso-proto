@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Auth_Register_FullMethodName = "/auth.Auth/Register"
-	Auth_Login_FullMethodName    = "/auth.Auth/Login"
-	Auth_Validate_FullMethodName = "/auth.Auth/Validate"
+	Auth_Register_FullMethodName    = "/auth.Auth/Register"
+	Auth_Login_FullMethodName       = "/auth.Auth/Login"
+	Auth_Validate_FullMethodName    = "/auth.Auth/Validate"
+	Auth_GrantAccess_FullMethodName = "/auth.Auth/GrantAccess"
 )
 
 // AuthClient is the client API for Auth service.
@@ -36,6 +37,8 @@ type AuthClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	// Validate checks the user's accessibility to a specific app
 	Validate(ctx context.Context, in *ValidateTokenRequest, opts ...grpc.CallOption) (*ValidateTokenResponse, error)
+	// GrantAccess grants access to a specific app for a user.
+	GrantAccess(ctx context.Context, in *GrantAccessRequest, opts ...grpc.CallOption) (*GrantAccessResponse, error)
 }
 
 type authClient struct {
@@ -76,6 +79,16 @@ func (c *authClient) Validate(ctx context.Context, in *ValidateTokenRequest, opt
 	return out, nil
 }
 
+func (c *authClient) GrantAccess(ctx context.Context, in *GrantAccessRequest, opts ...grpc.CallOption) (*GrantAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GrantAccessResponse)
+	err := c.cc.Invoke(ctx, Auth_GrantAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServer is the server API for Auth service.
 // All implementations must embed UnimplementedAuthServer
 // for forward compatibility.
@@ -88,6 +101,8 @@ type AuthServer interface {
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	// Validate checks the user's accessibility to a specific app
 	Validate(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error)
+	// GrantAccess grants access to a specific app for a user.
+	GrantAccess(context.Context, *GrantAccessRequest) (*GrantAccessResponse, error)
 	mustEmbedUnimplementedAuthServer()
 }
 
@@ -106,6 +121,9 @@ func (UnimplementedAuthServer) Login(context.Context, *LoginRequest) (*LoginResp
 }
 func (UnimplementedAuthServer) Validate(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Validate not implemented")
+}
+func (UnimplementedAuthServer) GrantAccess(context.Context, *GrantAccessRequest) (*GrantAccessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GrantAccess not implemented")
 }
 func (UnimplementedAuthServer) mustEmbedUnimplementedAuthServer() {}
 func (UnimplementedAuthServer) testEmbeddedByValue()              {}
@@ -182,6 +200,24 @@ func _Auth_Validate_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auth_GrantAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GrantAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServer).GrantAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auth_GrantAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).GrantAccess(ctx, req.(*GrantAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auth_ServiceDesc is the grpc.ServiceDesc for Auth service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -200,6 +236,10 @@ var Auth_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Validate",
 			Handler:    _Auth_Validate_Handler,
+		},
+		{
+			MethodName: "GrantAccess",
+			Handler:    _Auth_GrantAccess_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

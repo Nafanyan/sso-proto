@@ -12,6 +12,8 @@ service Auth {
   rpc Login (LoginRequest) returns (LoginResponse);
   // Validate checks the user's accessibility to a specific app
   rpc Validate(ValidateTokenRequest) returns (ValidateTokenResponse);
+  // GrantAccess grants access to a specific app for a user.
+  rpc GrantAccess (GrantAccessRequest) returns (GrantAccessResponse);
 }
 
 message RegisterRequest {
@@ -41,4 +43,13 @@ message ValidateTokenRequest {
 
 message ValidateTokenResponse {
   string email = 1; // Email of the user (only if valid).
+}
+
+message GrantAccessRequest {
+  string email = 1; // Email of the user to grant access to.
+  string app_code = 2; // Code of the app to grant access to.
+}
+
+message GrantAccessResponse {
+    string app_code = 1; // Code of the app to grant access to.
 }
