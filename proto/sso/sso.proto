@@ -10,6 +10,8 @@ service Auth {
   rpc Register (RegisterRequest) returns (RegisterResponse);
   // Login logs in a user and returns an auth token.
   rpc Login (LoginRequest) returns (LoginResponse);
+  // Log out of the system 
+  rpc Logout (LogoutRequest) returns (LogoutResponse);
   // Validate checks the user's accessibility to a specific app
   rpc Validate(ValidateTokenRequest) returns (ValidateTokenResponse);
   // GrantAccess grants access to a specific app for a user.
@@ -18,8 +20,10 @@ service Auth {
     option deprecated = true;
   }
   // AllowAccess allows access to a specific app for a user.
+  // Deprecated: use Login instead.
   rpc AllowAccess (AllowAccessRequest) returns (AllowAccessResponse);
   // RevokeAccess revokes access to a specific app for a user.
+  // Deprecated: use Logout instead.
   rpc RevokeAccess (RevokeAccessRequest) returns (RevokeAccessResponse);
 }
 
@@ -43,13 +47,23 @@ message LoginResponse {
   string token = 1; // Auth token of the logged in user.
 }
 
+message LogoutRequest {
+  string email = 1; // Email of the user to logout.
+  string app_code = 2; // Code of the app to logout to.
+}
+
+message LogoutResponse {
+  bool success = 1; // True if the logout was successful.
+}
+
 message ValidateTokenRequest {
   string token = 1; // Token to validate.
   string app_code = 2; // Code of the app to validate to.
 }
 
 message ValidateTokenResponse {
-  string email = 1; // Email of the user (only if valid).
+  string email = 1 [deprecated = true]; // Deprecated: Property will be removed.
+  bool success = 2; // True if token valide
 }
 
 // Deprecated: use AllowAccessRequest instead.
@@ -65,20 +79,24 @@ message GrantAccessResponse {
   string app_code = 1; // Code of the app to grant access to.
 }
 
+// Deprecated: use LoginRequest
 message AllowAccessRequest {
   string email = 1; // Email of the user to allow access to.
   string app_code = 2; // Code of the app to allow access to.
 }
 
+// Deprecated: use LoginResponse
 message AllowAccessResponse {
   string app_code = 1; // Code of the app access was allowed to.
 }
 
+// Deprecated: use LogoutRequest
 message RevokeAccessRequest {
   string email = 1; // Email of the user to revoke access from.
   string app_code = 2; // Code of the app to revoke access to.
 }
 
+// Deprecated: use LogoutResponse
 message RevokeAccessResponse {
   string app_code = 1; // Code of the app access was revoked from.
 }

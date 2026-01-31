@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Auth_Register_FullMethodName     = "/auth.Auth/Register"
 	Auth_Login_FullMethodName        = "/auth.Auth/Login"
+	Auth_Logout_FullMethodName       = "/auth.Auth/Logout"
 	Auth_Validate_FullMethodName     = "/auth.Auth/Validate"
 	Auth_GrantAccess_FullMethodName  = "/auth.Auth/GrantAccess"
 	Auth_AllowAccess_FullMethodName  = "/auth.Auth/AllowAccess"
@@ -37,6 +38,8 @@ type AuthClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	// Login logs in a user and returns an auth token.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	// Log out of the system
+	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	// Validate checks the user's accessibility to a specific app
 	Validate(ctx context.Context, in *ValidateTokenRequest, opts ...grpc.CallOption) (*ValidateTokenResponse, error)
 	// Deprecated: Do not use.
@@ -44,8 +47,10 @@ type AuthClient interface {
 	// Deprecated: use AllowAccess instead.
 	GrantAccess(ctx context.Context, in *GrantAccessRequest, opts ...grpc.CallOption) (*GrantAccessResponse, error)
 	// AllowAccess allows access to a specific app for a user.
+	// Deprecated: use Login instead.
 	AllowAccess(ctx context.Context, in *AllowAccessRequest, opts ...grpc.CallOption) (*AllowAccessResponse, error)
 	// RevokeAccess revokes access to a specific app for a user.
+	// Deprecated: use Logout instead.
 	RevokeAccess(ctx context.Context, in *RevokeAccessRequest, opts ...grpc.CallOption) (*RevokeAccessResponse, error)
 }
 
@@ -71,6 +76,16 @@ func (c *authClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.C
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LoginResponse)
 	err := c.cc.Invoke(ctx, Auth_Login_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LogoutResponse)
+	err := c.cc.Invoke(ctx, Auth_Logout_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +143,8 @@ type AuthServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	// Login logs in a user and returns an auth token.
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	// Log out of the system
+	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	// Validate checks the user's accessibility to a specific app
 	Validate(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error)
 	// Deprecated: Do not use.
@@ -135,8 +152,10 @@ type AuthServer interface {
 	// Deprecated: use AllowAccess instead.
 	GrantAccess(context.Context, *GrantAccessRequest) (*GrantAccessResponse, error)
 	// AllowAccess allows access to a specific app for a user.
+	// Deprecated: use Login instead.
 	AllowAccess(context.Context, *AllowAccessRequest) (*AllowAccessResponse, error)
 	// RevokeAccess revokes access to a specific app for a user.
+	// Deprecated: use Logout instead.
 	RevokeAccess(context.Context, *RevokeAccessRequest) (*RevokeAccessResponse, error)
 	mustEmbedUnimplementedAuthServer()
 }
@@ -153,6 +172,9 @@ func (UnimplementedAuthServer) Register(context.Context, *RegisterRequest) (*Reg
 }
 func (UnimplementedAuthServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedAuthServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
 }
 func (UnimplementedAuthServer) Validate(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Validate not implemented")
@@ -219,6 +241,24 @@ func _Auth_Login_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthServer).Login(ctx, req.(*LoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auth_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auth_Logout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).Logout(ctx, req.(*LogoutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -309,6 +349,10 @@ var Auth_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _Auth_Login_Handler,
+		},
+		{
+			MethodName: "Logout",
+			Handler:    _Auth_Logout_Handler,
 		},
 		{
 			MethodName: "Validate",

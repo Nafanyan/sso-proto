@@ -14,10 +14,11 @@ Protocol Buffers определения для SSO (Single Sign-On) сервис
 
 - **Register** — регистрация нового пользователя
 - **Login** — вход пользователя и получение токена доступа
-- **Validate** — проверка валидности токена и доступа к конкретному приложению (возвращает email пользователя, если токен валиден; иначе возвращает gRPC ошибку)
-- **AllowAccess** — разрешение доступа пользователя к конкретному приложению
-- **RevokeAccess** — отзыв доступа пользователя к конкретному приложению
-- **GrantAccess** — *deprecated*: используйте `AllowAccess` вместо этого метода
+- **Logout** — выход пользователя из приложения (по email и app_code)
+- **Validate** — проверка валидности токена и доступа к приложению (возвращает `success`; поле `email` помечено как deprecated)
+- **AllowAccess** — *deprecated*: используйте **Login** вместо этого метода
+- **RevokeAccess** — *deprecated*: используйте **Logout** вместо этого метода
+- **GrantAccess** — *deprecated*: используйте **AllowAccess** (который в свою очередь заменён на **Login**)
 
 ## Структура проекта
 
@@ -30,7 +31,8 @@ sso-proto/
 │   └── go/
 │       └── sso/               # Сгенерированный Go код
 ├── go.mod                     # Go зависимости
-├── Taskfile.yaml             # Задачи для сборки
+├── go.sum                     # Контрольные суммы зависимостей
+├── Taskfile.yaml              # Задачи для сборки
 └── README.md
 ```
 
@@ -91,11 +93,23 @@ resp, err := authClient.Register(ctx, req)
 req := &ssov1.LoginRequest{
     Email:    "user@example.com",
     Password: "secure_password",
-    AppCode:  "my-app", // Используйте app_code вместо app_id
+    AppCode:  "my-app",
 }
 
 resp, err := authClient.Login(ctx, req)
 // resp.Token — токен доступа
+```
+
+### Пример выхода
+
+```go
+req := &ssov1.LogoutRequest{
+    Email:   "user@example.com",
+    AppCode: "my-app",
+}
+
+resp, err := authClient.Logout(ctx, req)
+// resp.Success — true при успешном выходе
 ```
 
 ### Пример проверки токена
@@ -108,13 +122,16 @@ req := &ssov1.ValidateTokenRequest{
 
 resp, err := authClient.Validate(ctx, req)
 if err != nil {
-    // Токен невалиден или нет доступа к приложению
+    // Ошибка gRPC (токен невалиден или нет доступа)
     log.Fatal(err)
 }
-// resp.Email — email пользователя (возвращается только если токен валиден)
+// resp.Success — true, если токен валиден и есть доступ к приложению
+// resp.Email — deprecated, будет удалён; ориентируйтесь на success
 ```
 
-### Пример разрешения доступа
+### Пример разрешения доступа (deprecated)
+
+> **Примечание:** метод `AllowAccess` помечен как deprecated. Используйте **Login** для входа и выдачи токена.
 
 ```go
 req := &ssov1.AllowAccessRequest{
@@ -123,13 +140,12 @@ req := &ssov1.AllowAccessRequest{
 }
 
 resp, err := authClient.AllowAccess(ctx, req)
-if err != nil {
-    log.Fatal(err)
-}
-// resp.AppCode — код приложения, к которому был предоставлен доступ
+// resp.AppCode — код приложения
 ```
 
-### Пример отзыва доступа
+### Пример отзыва доступа (deprecated)
+
+> **Примечание:** метод `RevokeAccess` помечен как deprecated. Используйте **Logout** для выхода пользователя.
 
 ```go
 req := &ssov1.RevokeAccessRequest{
@@ -138,10 +154,7 @@ req := &ssov1.RevokeAccessRequest{
 }
 
 resp, err := authClient.RevokeAccess(ctx, req)
-if err != nil {
-    log.Fatal(err)
-}
-// resp.AppCode — код приложения, доступ к которому был отозван
+// resp.AppCode — код приложения
 ```
 
 ## Миграция с app_id на app_code
@@ -158,40 +171,46 @@ req := &ssov1.LoginRequest{
 **Новый подход:**
 ```go
 req := &ssov1.LoginRequest{
-    AppCode: "my-app", // рекомендуется
+    AppCode: "my-app",
 }
 ```
 
-Старый код продолжит работать, но рекомендуется обновить на использование `app_code`.
+## Миграция с GrantAccess на AllowAccess и на Login
 
-## Миграция с GrantAccess на AllowAccess
+- Метод **GrantAccess** помечен как deprecated → используйте **AllowAccess**.
+- Метод **AllowAccess** также помечен как deprecated → для выдачи доступа используйте **Login** (вход пользователя в приложение и получение токена).
 
-Метод `GrantAccess` помечен как `deprecated`. Используйте `AllowAccess` для новых реализаций.
-
-**Старый подход (deprecated):**
+**Рекомендуемый подход:**
 ```go
-req := &ssov1.GrantAccessRequest{
+req := &ssov1.LoginRequest{
+    Email:   "user@example.com",
+    Password: "password",
+    AppCode:  "my-app",
+}
+resp, err := authClient.Login(ctx, req)
+// resp.Token — токен для доступа к приложению
+```
+
+## Миграция с RevokeAccess на Logout
+
+Метод **RevokeAccess** помечен как deprecated. Используйте **Logout** для выхода пользователя из приложения.
+
+**Рекомендуемый подход:**
+```go
+req := &ssov1.LogoutRequest{
     Email:   "user@example.com",
     AppCode: "my-app",
 }
-
-resp, err := authClient.GrantAccess(ctx, req) // deprecated
+resp, err := authClient.Logout(ctx, req)
+// resp.Success — результат операции
 ```
 
-**Новый подход:**
-```go
-req := &ssov1.AllowAccessRequest{
-    Email:   "user@example.com",
-    AppCode: "my-app",
-}
+## ValidateTokenResponse: email deprecated
 
-resp, err := authClient.AllowAccess(ctx, req) // рекомендуется
-```
-
-Старый код продолжит работать, но рекомендуется обновить на использование `AllowAccess`.
+В ответе **ValidateTokenResponse** поле `email` помечено как deprecated и будет удалено. Используйте поле **success** (bool) для проверки валидности токена.
 
 ## Версионирование
 
 Текущая версия: **v1**
 
-Изменения обратно совместимы (backward compatible), поэтому версия остается v1.
+Изменения обратно совместимы (backward compatible), поэтому версия остаётся v1.
